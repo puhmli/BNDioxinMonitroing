@@ -16,6 +16,7 @@ dioxin_2015 <- read_excel("DioxinData.xlsx", sheet = "2015")
 dioxin_2016 <- read_excel("DioxinData.xlsx", sheet = "2016")
 dioxin_2017 <- read_excel("DioxinData.xlsx", sheet = "2017")
 dioxin_2018 <- read_excel("DioxinData.xlsx", sheet = "2018")
+
 dioxin_2008 <- dioxin_2008[,c(-3,-4,-11)]
 dioxin_2009 <- dioxin_2009[,c(-3,-4,-11)]
 dioxin_2010 <- dioxin_2010[,c(-3,-4,-11)]
@@ -27,6 +28,7 @@ dioxin_2015 <- dioxin_2015[,c(-3,-4,-11)]
 dioxin_2016 <- dioxin_2016[,c(-3,-4,-11)]
 dioxin_2017 <- dioxin_2017[,c(-3,-4,-11)]
 dioxin_2018 <- dioxin_2018[,c(-3,-4,-11)]
+
 #dioxin_2018 data is not sufficient
 dioxin_test<-rbind(dioxin_2008,dioxin_2009,dioxin_2010,dioxin_2011,dioxin_2012,
                    dioxin_2013,dioxin_2014,dioxin_2015,dioxin_2016,
@@ -69,6 +71,8 @@ dioxin_test$product<- gsub('egg', '1', dioxin_test$product)
 dioxin_test$product<- gsub('meat', '2', dioxin_test$product)
 dioxin_test$product<- gsub('milk', '3', dioxin_test$product)
 dioxin_test$product<- gsub('liver', '4', dioxin_test$product)
+dioxin_test$product<- as.factor(dioxin_test$product)
+levels(dioxin_test$product)
 ###################################################################################
 
 ###############################################################################
@@ -80,23 +84,26 @@ levels(dioxin_test$`sampling place`)
 dioxin_test$`sampling place`<- gsub('slaughterhouse', '1', dioxin_test$`sampling place`)
 dioxin_test$`sampling place`<- gsub('farm', '2', dioxin_test$`sampling place`)
 dioxin_test$`sampling place`<- gsub('aquaculture', '3', dioxin_test$`sampling place`)
-
+dioxin_test$`sampling place`<- as.factor(dioxin_test$`sampling place`)
+levels(dioxin_test$`sampling place`)
 ###############################################################################
-#data clean for screening reults
+#data clean for screening results
 #################################################
 dioxin_test$screeningResults<- as.factor(dioxin_test$screeningResults)
 levels(dioxin_test$screeningResults)
 dioxin_test$screeningResults<- gsub('negative', '0', dioxin_test$screeningResults)
 dioxin_test$screeningResults<- gsub('suspect', '1', dioxin_test$screeningResults)
-
+dioxin_test$screeningResults<- as.factor(dioxin_test$screeningResults)
+levels(dioxin_test$screeningResults)
 ###############################################################################
-#data clean for GC reults
+#data clean for GC results
 #################################################
 dioxin_test$gcResults<- as.factor(dioxin_test$gcResults)
 levels(dioxin_test$gcResults)
 dioxin_test$gcResults<- gsub('n', '0', dioxin_test$gcResults)
 dioxin_test$gcResults<- gsub('p', '1',dioxin_test$gcResults)
-
+dioxin_test$gcResults<- as.factor(dioxin_test$gcResults)
+levels(dioxin_test$gcResults)
 ###############################################################################
 #data clean for sample size
 #################################################
@@ -112,6 +119,8 @@ dioxin_test$sampleSize<- gsub('340', '3',dioxin_test$sampleSize)
 dioxin_test$sampleSize<- gsub('358', '3',dioxin_test$sampleSize)
 dioxin_test$sampleSize<- gsub('379', '3',dioxin_test$sampleSize)
 dioxin_test$sampleSize<- gsub('365', '3',dioxin_test$sampleSize)
+dioxin_test$sampleSize<- as.factor(dioxin_test$sampleSize)
+levels(dioxin_test$sampleSize)
 ###############################
 
 ##############################
@@ -136,12 +145,12 @@ dioxin_BN$euMonitoring <- as.factor(dioxin_BN$euMonitoring)
 str(dioxin_BN)
 dioxin_BN <- as.data.frame(dioxin_BN)
 names(dioxin_BN)[5]="place"
-# delete certain nodes
-dioxin_BN <- dioxin_BN[,-1]
-dioxin_BN <- dioxin_BN[,-8]
+
 #80%
 nrow(dioxin_BN)
-samp <- sample(nrow(dioxin_BN),2606)
+ns<-round(nrow(dioxin_BN)*0.8)
+set.seed(123)
+samp <- sample(nrow(dioxin_BN),ns)
 dioxin_BN80 <- dioxin_BN[samp,]
 dioxin_BN20 <- dioxin_BN[-samp,]
 ##########################################################
@@ -161,20 +170,14 @@ library("bnclassify")
 library("gRbase")
 library("gRain")
 ################################################
-#structure learning
+#Bayesian structure learning and validation
 ############################################################################
+
+#####structure learning
 wl = c( "sampleSize", "euMonitoring")
 bl= c("trimester", "euMonitoring")
 bl = matrix(c("trimester", "euMonitoring", "euMonitoring", "trimester"), ncol = 2, byrow = TRUE)
-tan = tree.bayes(dioxin_BN, "gcResults", blacklist = bl)
-fitted = bn.fit(tan, dioxin_BN, method = "bayes")
-pred = predict(fitted, dioxin_BN20)
-bnclassify::accuracy(pred, dioxin_BN20$gcResults)
-table(pred, dioxin_BN20[, "gcResults"]) 
-par(mfrow = c(1,1))
-graphviz.plot(tan)
-################## TAN
-tan = tree.bayes(dioxin_BN, "screeningResults")
+tan = tree.bayes(dioxin_BN, "screeningResults", blacklist = bl)
 fitted = bn.fit(tan, dioxin_BN, method = "bayes")
 fitted$screeningResults
 pred = predict(fitted, dioxin_BN20)
@@ -184,7 +187,8 @@ par(mfrow = c(1,1))
 graphviz.plot(tan)
 cv.nb = bn.cv(data = dioxin_BN,tan, runs = 10, method = "k-fold", folds = 10)
 
-#####marginal distirbution
+
+#####marginal distribution
 junction = compile(as.grain(fitted))
 year<-querygrain(junction , nodes = "year", type = "marginal",
                  evidence = NULL, exclude = TRUE, normalize = TRUE, result = "array",
@@ -302,9 +306,10 @@ gcResults2=cpquery(fitted, event =(gcResults== "2"),evidence=(screeningResults =
 gcResults3=cpquery(fitted, event =(gcResults== "3"),evidence=(screeningResults == "1"), method = "ls",debug = TRUE, n= 10^6)
 
 cv.nb = bn.cv(data = dioxin_BN,tan, runs = 10, method = "k-fold", folds = 10)
-#######
-#cpquery  for the probability used in optimization
-###########
+
+############################################################################
+#cpquery  for the conditional probability used in optimization model
+###########################################################################
 #milk in one year
 ###########
 for (i in 1:4) {
@@ -321,7 +326,7 @@ for (i in 1:4) {
 ###########
 for (i in 1:4) {
   as.factor(i)
-  set.seed(0)
+ set.seed(0)
   prob= cpquery(fitted, event = (screeningResults== "1"),evidence=((trimester==i)&(animalSpecies=="1")&(product=="2")
                                                                    &(place=="1"))) 
   result<- c(prob, paste("bovinemeat_season", i))
