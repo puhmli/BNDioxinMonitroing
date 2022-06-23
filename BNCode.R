@@ -129,6 +129,9 @@ levels(dioxin_test$sampleSize)
 dioxin_test$euMonitoring<- as.factor(dioxin_test$euMonitoring)
 levels(dioxin_test$euMonitoring)
 ###############################
+
+
+####################################################################
 #pick nodes for BN
 #####################################################################
 dioxin_BN <- dioxin_test
@@ -154,9 +157,13 @@ samp <- sample(nrow(dioxin_BN),ns)
 dioxin_BN80 <- dioxin_BN[samp,]
 dioxin_BN20 <- dioxin_BN[-samp,]
 ##########################################################
-#Bayesian network
+
+
+
+####################################################
+#Bayesian network modelling
 #####################################################
-#bnlearn library
+#bnlearn PACKAGE library
 #########################################################
 install.packages("bnlearn")
 library(bnlearn)
@@ -170,9 +177,8 @@ library("bnclassify")
 library("gRbase")
 library("gRain")
 ################################################
-#Bayesian structure learning and validation
+#Bayesian structure learning, inference, validation
 ############################################################################
-
 #####structure learning
 wl = c( "sampleSize", "euMonitoring")
 bl= c("trimester", "euMonitoring")
@@ -186,7 +192,6 @@ table(pred, dioxin_BN20[, "screeningResults"])
 par(mfrow = c(1,1))
 graphviz.plot(tan)
 cv.nb = bn.cv(data = dioxin_BN,tan, runs = 10, method = "k-fold", folds = 10)
-
 
 #####marginal distribution
 junction = compile(as.grain(fitted))
@@ -217,9 +222,8 @@ gcResults <- querygrain(junction , nodes = "gcResults", type = "marginal",
 euMonitroing <- querygrain(junction , nodes = "euMonitoring", type = "marginal",
                            evidence = NULL, exclude = TRUE, normalize = TRUE, result = "array",
                            details = 0)
-###################################################################
-#conditional probability with evidence screeningResults=1
-#############################################################
+
+####conditional probability with evidence screeningResults=1
 ### year
 for (i in 2008:2017) {
   as.factor(i)
@@ -308,7 +312,7 @@ gcResults3=cpquery(fitted, event =(gcResults== "3"),evidence=(screeningResults =
 cv.nb = bn.cv(data = dioxin_BN,tan, runs = 10, method = "k-fold", folds = 10)
 
 ############################################################################
-#cpquery  for the conditional probability used in optimization model
+#Inference conditional probability used in optimization model (Table 3)
 ###########################################################################
 #milk in one year
 ###########
